@@ -1,0 +1,25 @@
+docker-compose -f docker-compose.backend.yml down
+
+docker-compose -f docker-compose.backend.yml up -d --build
+
+nano /usr/share/elasticsearch/config/elasticsearch.yml
+
+docker restart backend-elasticsearch-1
+
+/Users/spy/Documents/PY/self/PlanB/LumiDoc/backend/venv/bin/python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+
+  backend:
+    build: .
+    environment:
+      - HF_HOME=/app/huggingface_cache  # ✅ Define Hugging Face cache dir
+    volumes:
+      - ./huggingface_cache:/app/huggingface_cache  # ✅ Mount cache folder
+
+from sentence_transformers import SentenceTransformer
+
+# ✅ Use a valid model instead of BAAI/bge-m3
+embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+huggingface-cli whoami
+huggingface-cli repo info BAAI/bge-m3

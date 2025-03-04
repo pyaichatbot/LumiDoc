@@ -1,0 +1,91 @@
+# Python virtual environment
+venv/
+backend/venv/
+env/
+ENV/
+.env
+.venv
+env.bak/
+venv.bak/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+
+# Local development settings
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pytest
+.pytest_cache/
+
+# Project specific
+uploaded_files/
+faiss_index.bin
+backend/ai/__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+backend/__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+backend/venv/
