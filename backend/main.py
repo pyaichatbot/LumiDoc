@@ -648,54 +648,51 @@ def sanitize_filename(filename: str) -> str:
     filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', filename)
     return filename
 
-@app.post("/upload", dependencies=[Depends(limiter.limit("10/minute"))])
+@app.post("/upload")
 async def upload_files(
     request: Request,
     background_tasks: BackgroundTasks,
-    files: List[UploadFile] = File(...),
-    chat_id: Optional[str] = Query(None)  # ✅ Add `chat_id` as a query parameter
-    ):
+    chat_id: str = Query(..., description="Chat ID to associate uploaded files with"),
+    files: List[UploadFile] = File(..., description="Files to upload")
+):
     """Upload multiple files and process them asynchronously."""
     uploaded_files = []
-      
-    if not chat_id:
-        raise HTTPException(status_code=400, detail="Missing chat_id")
     
     for file in files:
         try:
-            if not file.file or file.file.closed:
-                raise HTTPException(status_code=400, detail=f"File {file.filename} is not accessible or locked.")
+            if not file.filename:
+                raise HTTPException(status_code=400, detail="No filename provided")
             
             # Validate file type
-            if not file.content_type:
-                raise HTTPException(status_code=400, detail=f"File {file.filename} has no content type.")
+            content_type = file.content_type or "application/octet-stream"
             
             # Sanitize filename
             safe_filename = sanitize_filename(file.filename)
             file_path = os.path.join(UPLOAD_DIR, safe_filename)
             
             # Read file content
-            file.file.seek(0)  # Reset file pointer before reading
-            file_content = await file.file.read()
+            contents = await file.read()
             
             # Validate file size (e.g., max 10MB)
-            if len(file_content) > 10 * 1024 * 1024:  # 10MB limit
+            if len(contents) > 10 * 1024 * 1024:  # 10MB limit
                 raise HTTPException(status_code=400, detail=f"File {file.filename} exceeds size limit of 10MB.")
                
             metadata = {
                 "document_id": file.filename,
-                "chat_id": chat_id,  # ✅ Associate file with chat session if available
+                "chat_id": chat_id,
                 "upload_time": datetime.utcnow().isoformat(),
-                "file_size": len(file_content),
-                "file_type": file.content_type,
+                "file_size": len(contents),
+                "file_type": content_type,
                 "language": "",
                 "processing_status": "pending",
                 "vectorized": False,
-                "embedding": None
+                "content": None  # Will be populated during processing
             }
             
             # Save file
-            file_storage.save_file(file_path, file_content)
+            with open(file_path, "wb") as f:
+                f.write(contents)
+            
             uploaded_files.append(file.filename)
             
             # Add to background tasks
@@ -703,7 +700,9 @@ async def upload_files(
             
         except Exception as e:
             logging.error(f"Error saving file {file.filename}: {str(e)} - Trace: {traceback.format_exc()}")
-            raise HTTPException(status_code=500, detail=f"Failed to process file {file.filename}. Reason: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to process file {file.filename}. Error: {str(e)}")
+        finally:
+            await file.close()  # Ensure file is closed
     
     return {"status": "success", "uploaded_files": uploaded_files}
 

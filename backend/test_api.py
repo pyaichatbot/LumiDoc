@@ -93,7 +93,7 @@ def test_upload_files(token: str, user_id: str, email: str):
         print("❌ No token or user_id found, login first!")
         return
     
-    url = f"{BASE_URL}/upload?chat_id={email}"  # ✅ Include chat_id as query param
+    url = f"{BASE_URL}/upload"
     headers = {
         "Authorization": f"Bearer {token}"
     }
@@ -114,50 +114,54 @@ def test_upload_files(token: str, user_id: str, email: str):
                 print(f"❌ Error deleting {file_path}: {e}")
         print("✅ Cleaned up existing test files")
 
-    # Create fresh test files with proper content
+    # Create test files with more substantial content
     test_files = [
-        ("test1.pdf", "application/pdf", b"PDF content"),  # Binary content for PDF
-        ("test2.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", b"DOCX content"),  # Binary content for DOCX
-        ("test3.txt", "text/plain", "This is a simple text file.")  # Text content
+        ("test1.pdf", "application/pdf", b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/Resources <<\n/Font <<\n/F1 4 0 R\n>>\n>>\n/MediaBox [0 0 612 792]\n/Contents 5 0 R\n>>\nendobj\n4 0 obj\n<<\n/Type /Font\n/Subtype /Type1\n/BaseFont /Helvetica\n>>\nendobj\n5 0 obj\n<<\n/Length 44\n>>\nstream\nBT\n/F1 24 Tf\n72 720 Td\n(Test PDF Content) Tj\nET\nendstream\nendobj\nxref\n0 6\n0000000000 65535 f\n0000000009 00000 n\n0000000058 00000 n\n0000000115 00000 n\n0000000254 00000 n\n0000000332 00000 n\ntrailer\n<<\n/Size 6\n/Root 1 0 R\n>>\nstartxref\n427\n%%EOF\n"),
+        ("test2.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", b"PK\x03\x04\x14\x00\x00\x00\x00\x00\x00\x00!\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00Test DOCX Content"),
+        ("test3.txt", "text/plain", "This is a test text file with some meaningful content.\nIt includes multiple lines\nand some sample text for testing.")
     ]
 
-    for filename, content_type, content in test_files:
-        file_path = os.path.join(test_files_dir, filename)
-        try:
-            if isinstance(content, str):
-                with open(file_path, "w") as f:
-                    f.write(content)
-            else:
-                with open(file_path, "wb") as f:
-                    f.write(content)
-            print(f"✅ Created test file: {filename}")
-        except Exception as e:
-            print(f"❌ Error creating {filename}: {e}")
-            continue
-
-    # Prepare files for upload
-    files = []
-    for filename, content_type, _ in test_files:
-        file_path = os.path.join(test_files_dir, filename)
-        try:
-            with open(file_path, "rb") as f:
-                files.append(("files", (filename, f.read(), content_type)))
-            print(f"✅ Prepared file for upload: {filename}")
-        except Exception as e:
-            print(f"❌ Error preparing {filename} for upload: {e}")
-
-    if not files:
-        print("❌ No files prepared for upload")
-        return
-
     try:
-        response = requests.post(url, headers=headers, files=files)
-        print(f"📌 Upload Response: {response.status_code} {response.json()}")
+        # Prepare files for upload
+        files_to_upload = []
+        
+        for filename, content_type, content in test_files:
+            file_path = os.path.join(test_files_dir, filename)
+            # Write content to file
+            mode = "wb" if isinstance(content, bytes) else "w"
+            with open(file_path, mode) as f:
+                f.write(content)
+            
+            # Create tuple for upload
+            files_to_upload.append(
+                ("files", (
+                    filename,
+                    open(file_path, "rb"),
+                    content_type
+                ))
+            )
 
-        if response.status_code == 200:
-            print("✅ File upload successful")
-        else:
-            print("❌ File upload failed")
+        # Add chat_id as a query parameter
+        params = {"chat_id": email}
+        
+        try:
+            # Make the request with prepared files
+            response = requests.post(url, headers=headers, files=files_to_upload, params=params)
+            print(f"📌 Upload Response: {response.status_code}")
+            print(f"📌 Response content: {response.text}")
+
+            if response.status_code == 200:
+                print("✅ File upload successful")
+            else:
+                print(f"❌ File upload failed with status code {response.status_code}")
+        finally:
+            # Close all file handles
+            for _, file_tuple in files_to_upload:
+                try:
+                    file_tuple[1].close()
+                except Exception as e:
+                    print(f"❌ Error closing file: {e}")
+
     except Exception as e:
         print(f"❌ Error during file upload: {e}")
     finally:
@@ -171,13 +175,13 @@ def test_upload_files(token: str, user_id: str, email: str):
             except Exception as e:
                 print(f"❌ Error cleaning up {filename}: {e}")
 
-        # Remove directory if empty
+        # Remove test directory if empty
         try:
-            if not os.listdir(test_files_dir):
+            if os.path.exists(test_files_dir) and not os.listdir(test_files_dir):
                 os.rmdir(test_files_dir)
-                print("✅ Removed empty test_files directory")
+                print("✅ Removed test_files directory")
         except Exception as e:
-            print(f"❌ Error removing test_files directory: {e}")
+            print(f"❌ Error removing test directory: {e}")
 
 def test_refresh_token(token: str):
     """Test refreshing an access token"""
@@ -242,7 +246,7 @@ if __name__ == "__main__":
     random_email = test_signup()
     token, user_id = test_login(random_email)
     test_chat_response(token, user_id, email = random_email)#"testuser6771@example.com"
-    #test_upload_files(token, user_id, email = random_email)
+    test_upload_files(token, user_id, email = random_email)
     #test_refresh_token(token)    
     #test_retrieve_chat_sessions(token, user_id, email = random_email)
     #test_delete_chat_session(token, user_id, email = random_email)
