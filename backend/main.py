@@ -458,24 +458,6 @@ async def get_user_chat_sessions(
 
 @app.delete("/chat_sessions/{user_id}/{chat_id}", tags=["chat"])
 async def delete_chat_session(
-    user_id: str,
-    chat_id: str,
-    db: Session = Depends(get_db)
-):
-    """Get all active sessions for current user."""    
-    try:
-        chat_sessions = db.query(ChatSession).filter(
-            ChatSession.chat_id == chat_id,
-            ChatSession.user_id == user_id,  # No need for type casting
-            ChatSession.is_active == True
-        ).all()
-        return chat_sessions
-    except Exception as e:
-        logging.error(f"Database error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Database error occurred")
-
-@app.delete("/chat_sessions/{user_id}/{chat_id}", tags=["chat"])
-async def delete_chat_session(
     user_id: int,  # Change to int type
     chat_id: str,
     db: Session = Depends(get_db)
