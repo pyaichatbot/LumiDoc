@@ -1,0 +1,7 @@
+# Specifies the main entry point for the project
+entrypoint = "run.sh"
+
+# Configuration settings for deploying the application
+[deployment]
+run = "bash run.sh"
+ignorePorts = false
