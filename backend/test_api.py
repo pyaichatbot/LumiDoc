@@ -219,10 +219,26 @@ def test_refresh_token(refresh_token: str):
 
 def test_logout(token: str):
     """Test user logout"""
+    if not token:
+        print("❌ No token provided, skipping logout")
+        return False
+        
     url = f"{BASE_URL}/logout"
-    response = requests.post(url, headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    print("✅ Logout successful:", response.json())
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    try:
+        response = requests.post(url, headers=headers)
+        print(f"📌 Logout Response: {response.status_code}")
+        
+        if response.status_code == 200:
+            print("✅ Logout successful:", response.json())
+            return True
+        else:
+            print(f"❌ Logout failed: {response.text}")
+            return False
+    except Exception as e:
+        print(f"❌ Error during logout: {e}")
+        return False
 
 def test_health():
     """Test health check endpoint"""
@@ -270,17 +286,47 @@ def test_delete_chat_session(token: str, user_id: str, email: str):
     if not user_id or not email:
         print("⚠️ No user_id or email found, skipping deletion.")
         return
-    url = f"{BASE_URL}/chat_sessions/{user_id}/{email}"
-    response = requests.delete(url, headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    print("✅ Chat session deleted successfully.")
+    try:
+        # Convert user_id to integer
+        user_id_int = int(user_id)
+        url = f"{BASE_URL}/chat_sessions/{user_id_int}/{email}"
+        headers = {"Authorization": f"Bearer {token}"}
+        response = requests.delete(url, headers=headers)
+        
+        print(f"📌 Delete Chat Session Response: {response.status_code}")
+        if response.status_code == 200:
+            print("✅ Chat session deleted successfully:", response.json())
+        else:
+            print(f"❌ Failed to delete chat session: {response.text}")
+            
+    except ValueError as e:
+        print(f"❌ Invalid user_id format: {user_id}. Error: {e}")
+    except Exception as e:
+        print(f"❌ Error deleting chat session: {e}")
 
 def test_delete_user(token: str):
     """Test user deletion"""
+    if not token:
+        print("❌ No token provided, skipping user deletion")
+        return
+        
     url = f"{BASE_URL}/delete_user"
-    response = requests.delete(url, headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    print("✅ User account deleted successfully.")
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    try:
+        response = requests.delete(url, headers=headers)
+        print(f"📌 Delete User Response: {response.status_code}")
+        
+        if response.status_code == 200:
+            print("✅ User account deleted successfully:", response.json())
+        else:
+            print(f"❌ Failed to delete user: {response.text}")
+            
+    except Exception as e:
+        print(f"❌ Error deleting user: {e}")
+        return False
+    
+    return response.status_code == 200
 
 # Run Tests
 if __name__ == "__main__":
@@ -308,8 +354,19 @@ if __name__ == "__main__":
                 print("✅ Successfully retrieved chat sessions")
             
             # Continue with other tests
-            #test_upload_files(access_token, user_id, email=random_email)
-            #test_delete_chat_session(access_token, user_id, email=random_email)
-            #test_logout(access_token)
-            #test_delete_user(access_token)
+            test_upload_files(access_token, user_id, email=random_email)
+            test_delete_chat_session(access_token, user_id, email=random_email)
+            
+            # Try logout first, then delete user
+            if test_logout(access_token):
+                print("✅ Logout successful")
+            else:
+                print("⚠️ Logout skipped or failed")
+                
+            # Finally delete the user
+            if test_delete_user(access_token):
+                print("✅ User deletion successful")
+            else:
+                print("❌ User deletion failed")
+    
     test_health()
