@@ -44,6 +44,7 @@ class User(Base):
 
     # Relationships
     sessions = relationship("UserChatSession", back_populates="user", cascade="all, delete-orphan")
+    chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
 
     # Indexes
     __table_args__ = (
@@ -54,17 +55,17 @@ class ChatSession(Base):
     __tablename__ = "chat_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    chat_id = Column(String, unique=True, nullable=False, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    chat_id = Column(String, unique=True, index=True)  # Added unique constraint
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)  # Added ondelete CASCADE
     title = Column(String, nullable=True)
     messages = Column(JSON, default=list)
-    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
-    updated_at = Column(TIMESTAMP, onupdate=func.now())
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True)
 
     # Relationships
-    user = relationship("User")
-    files = relationship("FileMetadata", back_populates="chat", cascade="all, delete-orphan")  # ✅ Link to file metadata
+    user = relationship("User", back_populates="chat_sessions")
+    files = relationship("FileMetadata", back_populates="chat", cascade="all, delete-orphan")
 
     # Indexes
     __table_args__ = (
@@ -122,8 +123,8 @@ class ChatSessionRequest(BaseModel):
 class FileMetadata(Base):
     __tablename__ = "file_metadata"
 
-    document_id = Column(String, primary_key=True)  # Unique file identifier
-    chat_id = Column(String, ForeignKey("chat_sessions.chat_id", ondelete="CASCADE"), nullable=True)  # Link to chat session
+    document_id = Column(String, primary_key=True)
+    chat_id = Column(String, ForeignKey("chat_sessions.chat_id", ondelete="CASCADE"), nullable=True)
     upload_time = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     file_size = Column(Integer, nullable=True)
     file_type = Column(String, nullable=True)

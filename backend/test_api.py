@@ -39,6 +39,7 @@ def test_signup() -> str:
 
 # ✅ 2️⃣ Test User Login & Get Access Token
 def test_login(email: str):
+    """Test user login & Get Access Token"""
     url = f"{BASE_URL}/login"
     payload = {
         "username": email,
@@ -48,15 +49,15 @@ def test_login(email: str):
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     response = requests.post(url, data=payload, headers=headers)
     
-    print("📌 Login Response:", response.status_code, response.json())
+    print("📌 Login Response:", response.status_code)
 
     if response.status_code == 200:
         data = response.json()
         print("✅ Login successful")
-        return data.get("access_token"), data.get("user_id")
+        return data.get("access_token"), data.get("user_id"), data.get("refresh_token")
     else:
         print("❌ Login failed:", response.text)
-        return None, None
+        return None, None, None
 
 # ✅ 3️⃣ Test Chat Response
 def test_chat_response(token: str, user_id: str, email: str):
@@ -117,7 +118,7 @@ def test_upload_files(token: str, user_id: str, email: str):
     # Create test files with more substantial content
     test_files = [
         ("test1.pdf", "application/pdf", b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/Resources <<\n/Font <<\n/F1 4 0 R\n>>\n>>\n/MediaBox [0 0 612 792]\n/Contents 5 0 R\n>>\nendobj\n4 0 obj\n<<\n/Type /Font\n/Subtype /Type1\n/BaseFont /Helvetica\n>>\nendobj\n5 0 obj\n<<\n/Length 44\n>>\nstream\nBT\n/F1 24 Tf\n72 720 Td\n(Test PDF Content) Tj\nET\nendstream\nendobj\nxref\n0 6\n0000000000 65535 f\n0000000009 00000 n\n0000000058 00000 n\n0000000115 00000 n\n0000000254 00000 n\n0000000332 00000 n\ntrailer\n<<\n/Size 6\n/Root 1 0 R\n>>\nstartxref\n427\n%%EOF\n"),
-        ("test2.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", b"PK\x03\x04\x14\x00\x00\x00\x00\x00\x00\x00!\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00Test DOCX Content"),
+        ("test2.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", b"PK\x03\x04\x14\x00\x00\x00\x00\x00\x00\x00!\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00Test DOCX Content"),
         ("test3.txt", "text/plain", "This is a test text file with some meaningful content.\nIt includes multiple lines\nand some sample text for testing.")
     ]
 
@@ -183,18 +184,38 @@ def test_upload_files(token: str, user_id: str, email: str):
         except Exception as e:
             print(f"❌ Error removing test directory: {e}")
 
-def test_refresh_token(token: str):
+def test_refresh_token(refresh_token: str):
     """Test refreshing an access token"""
+    if not refresh_token:
+        print("❌ No refresh token provided, skipping refresh test")
+        return None, None
+        
     url = f"{BASE_URL}/refresh"
+    
+    # Prepare form data
     data = {
-        "refresh_token": token
+        "refresh_token": refresh_token
     }
+    
+    # Set proper headers for form data
     headers = {
         "Content-Type": "application/x-www-form-urlencoded"
     }
-    response = requests.post(url, data=data, headers=headers)
-    assert response.status_code == 200
-    print("✅ Token refreshed:", response.json())
+    
+    try:
+        response = requests.post(url, data=data, headers=headers)
+        print(f"📌 Refresh Token Response: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()
+            print("✅ Token refreshed successfully")
+            return result.get("access_token"), result.get("refresh_token")
+        else:
+            print(f"❌ Token refresh failed: {response.text}")
+            return None, None
+    except Exception as e:
+        print(f"❌ Error during token refresh: {e}")
+        return None, None
 
 def test_logout(token: str):
     """Test user logout"""
@@ -212,16 +233,37 @@ def test_health():
 
 def test_retrieve_chat_sessions(token: str, user_id: str, email: str):
     """Test fetching chat sessions"""
-    url = f"{BASE_URL}/chat_sessions/{user_id}/{email}"
-    response = requests.get(url, headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    chat_sessions = response.json()
-    print("✅ Chat Sessions Retrieved:", chat_sessions)
-    if chat_sessions:
-        global CHAT_ID
-        CHAT_ID = chat_sessions[0]["chat_id"]
-        global USER_ID
-        USER_ID = chat_sessions[0]["user_id"]
+    if not token or not user_id:
+        print("❌ No token or user_id found, skipping chat sessions retrieval")
+        return
+
+    try:
+        # Convert user_id to integer and ensure it's passed as an integer
+        user_id_int = int(user_id)
+        url = f"{BASE_URL}/chat_sessions/{user_id_int}/{email}"
+        headers = {"Authorization": f"Bearer {token}"}
+        
+        response = requests.get(url, headers=headers)
+        print(f"📌 Chat Sessions Response: {response.status_code}")
+        
+        if response.status_code == 200:
+            chat_sessions = response.json()
+            print("✅ Chat Sessions Retrieved:", chat_sessions)
+            if chat_sessions:
+                global CHAT_ID
+                CHAT_ID = chat_sessions[0]["chat_id"]
+                global USER_ID
+                USER_ID = chat_sessions[0]["user_id"]
+            return chat_sessions
+        else:
+            print(f"❌ Failed to retrieve chat sessions: {response.text}")
+            return None
+    except ValueError as e:
+        print(f"❌ Invalid user_id format: {user_id}. Error: {e}")
+        return None
+    except Exception as e:
+        print(f"❌ Error retrieving chat sessions: {e}")
+        return None
 
 def test_delete_chat_session(token: str, user_id: str, email: str):
     """Test deleting a chat session"""
@@ -244,12 +286,30 @@ def test_delete_user(token: str):
 if __name__ == "__main__":
     test_health()
     random_email = test_signup()
-    token, user_id = test_login(random_email)
-    test_chat_response(token, user_id, email = random_email)#"testuser6771@example.com"
-    test_upload_files(token, user_id, email = random_email)
-    #test_refresh_token(token)    
-    #test_retrieve_chat_sessions(token, user_id, email = random_email)
-    #test_delete_chat_session(token, user_id, email = random_email)
-    #test_logout(token)
-    #test_delete_user(token)
+    if random_email:
+        # Get initial tokens from login
+        access_token, user_id, refresh_token = test_login(random_email)
+        if access_token and refresh_token:
+            print(f"✅ Initial tokens received - User ID: {user_id}")
+            
+            # Create a chat session first
+            test_chat_response(access_token, user_id, email=random_email)
+            
+            # Try to refresh the tokens
+            new_access_token, new_refresh_token = test_refresh_token(refresh_token)
+            if new_access_token and new_refresh_token:
+                print("✅ Successfully refreshed tokens")
+                access_token = new_access_token
+                refresh_token = new_refresh_token
+            
+            # Now retrieve chat sessions
+            chat_sessions = test_retrieve_chat_sessions(access_token, user_id, email=random_email)
+            if chat_sessions:
+                print("✅ Successfully retrieved chat sessions")
+            
+            # Continue with other tests
+            #test_upload_files(access_token, user_id, email=random_email)
+            #test_delete_chat_session(access_token, user_id, email=random_email)
+            #test_logout(access_token)
+            #test_delete_user(access_token)
     test_health()

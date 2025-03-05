@@ -310,18 +310,31 @@ async def login(
         raise HTTPException(status_code=500, detail="Login failed")
 
 @app.post("/refresh", response_model=Token, tags=["authentication"])
-async def refresh_token(refresh_token: str = Form(...), db: Session = Depends(get_db)):
+async def refresh_token(
+    request: Request,
+    refresh_token: str = Form(...),
+    db: Session = Depends(get_db)
+):
     """Refresh access token using refresh token."""
     try:
-        if not refresh_token:
-            raise HTTPException(status_code=400, detail="Missing refresh token")
-        
-        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-        email = payload.get("sub")
-        token_type = payload.get("type")
-        
-        if not email or token_type != "refresh":
-            raise HTTPException(status_code=401, detail="Invalid refresh token")
+        # Validate refresh token
+        try:
+            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+            email = payload.get("sub")
+            token_type = payload.get("type")
+            
+            if not email or token_type != "refresh":
+                raise HTTPException(
+                    status_code=401, 
+                    detail="Invalid refresh token",
+                    headers={"WWW-Authenticate": "Bearer"}
+                )
+        except JWTError:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid refresh token format",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
         
         # Get session
         session = db.query(UserChatSession).filter(
@@ -330,7 +343,11 @@ async def refresh_token(refresh_token: str = Form(...), db: Session = Depends(ge
         ).first()
         
         if not session:
-            raise HTTPException(status_code=401, detail="Invalid or expired session")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid or expired session",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
         
         # Create new tokens
         access_token, new_refresh_token, access_expires, refresh_expires = create_tokens(email)
@@ -348,11 +365,18 @@ async def refresh_token(refresh_token: str = Form(...), db: Session = Depends(ge
             token_type="bearer",
             session_id=session.session_id,
             expires_at=access_expires,
-            refresh_token=new_refresh_token
+            refresh_token=new_refresh_token,
+            user_id=session.user_id
         )
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Token refresh failed: {str(e)}")
-        raise HTTPException(status_code=401, detail="Could not refresh token")
+        logging.error(f"Token refresh failed: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error during token refresh",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
 
 @app.post("/logout", tags=["authentication"])
 async def logout(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
@@ -415,11 +439,22 @@ async def delete_session(
     return {"message": "Session terminated successfully"}
 
 @app.get("/chat_sessions/{user_id}/{chat_id}", tags=["chat"])
-async def get_user_chat_sessions(user_id: str,
-    chat_id: str, db: Session = Depends(get_db)):
+async def get_user_chat_sessions(
+    user_id: int,  # Change type hint to int
+    chat_id: str,
+    db: Session = Depends(get_db)
+):
     """Get all active sessions for current user."""    
-    chat_sessions = db.query(ChatSession).filter(ChatSession.chat_id == chat_id, ChatSession.user_id == user_id, ChatSession.is_active == True).all()
-    return chat_sessions
+    try:
+        chat_sessions = db.query(ChatSession).filter(
+            ChatSession.chat_id == chat_id,
+            ChatSession.user_id == user_id,  # No need for type casting
+            ChatSession.is_active == True
+        ).all()
+        return chat_sessions
+    except Exception as e:
+        logging.error(f"Database error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Database error occurred")
 
 @app.delete("/chat_sessions/{user_id}/{chat_id}", tags=["chat"])
 async def delete_chat_session(
